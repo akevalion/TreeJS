@@ -1,212 +1,32 @@
 <html>
 <head>
-<script>
-class Visitor{
-    constructor(f){
-        this.f = f;
-    }
-    visitTree(tree){}
-}
-class InOrderVisitor extends Visitor{
-    visitTree(tree){
-        if(tree == null) return;
-        this.visitTree(tree.left);
-        this.f(tree.data);
-        this.visitTree(tree.right);
-    }
-}
-class PreOrderVisitor extends Visitor{
-    visitTree(tree){
-        if(tree == null) return;
-        this.f(tree.data);
-        this.visitTree(tree.left);
-        this.visitTree(tree.right);
-    }
-}
-class PostOrderVisitor extends Visitor{
-    visitTree(tree){
-        if(tree == null) return;
-        this.visitTree(tree.left);
-        this.visitTree(tree.right);
-        this.f(tree.data);
-    }
-}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="visitor.js"></script>
+<script src="pretty.js"></script>
+<script src="tree.js"></script>
+<script src="binary.js"></script>
 
-class PrettyPrinterVisitor extends Visitor{
-    visitTree(tree){
-        this.result = "";
-        let list = [];
-        list.push(tree);
-        this.print(list, 0, 0);
-    }
-    add(list, tree){
-        if(tree != null) list.push(tree);
+</head>
+<body style="background-color: rgb(148, 139, 139);">
+    <div id="debugDiv"></div>
+<script>
+    
+    let tree = null;
+    for(let k = 0; k < 30; k ++){
+        let val = Math.floor(Math.random()*90+10);
+        if(tree == null) tree = new BinaryTree(val);
+        else tree.insert(val);
     }
     
-    print(list, prevLevel, prevSpace){
-        if(list.length == 0) return;
-        let tree = list.shift();
-        let n = tree.spaces;
-        if(prevLevel == tree.level)
-            n -= prevSpace;
-        else
-            this.result += "\n";
-        while (n -- > 0 ) this.result += "-";
-        this.result += tree.data;
-        this.add(list, tree.left);
-        this.add(list, tree.right);
-        this.print(list, tree.level, tree.totalSpaces);
-    }
-}
-class PrettyTreeCreatorVisitor extends Visitor{
-    constructor(){
-        super(0);
-        this.space = 0;
-    }
-    visitTree(tree){
-        this.prettyTree=this.createTree(tree, 0);
-    }
-    createTree(tree, level){
-        if (tree == null) return null;
-        let newTree = new Tree(tree.data);
-        newTree.left = this.createTree(tree.left, level + 1);
-        newTree.dataSize = newTree.data.toString().length;
-        newTree.spaces = this.space;
-        newTree.level = level;
-        newTree.totalSpaces = newTree.spaces + newTree.dataSize;
-        this.space += newTree.dataSize;
-        newTree.right = this.createTree(tree.right, level + 1);
-        return newTree;
-    }
-}
-
-class Tree{
-    constructor(data){
-        this.data = data;
-        this.left = this.right = null;
-    }
-    accept(visitor){
-        visitor.visitTree(this);
-    }
-    inorder(f){
-        this.accept(new InOrderVisitor(f));
-    }
-    preorder(f){
-        this.accept(new PreOrderVisitor(f));
-    }
-    postorder(f){
-        this.accept(new PostOrderVisitor(f));
-    }
-    toString(){
-        let c = new PrettyTreeCreatorVisitor();
-        this.accept(c);
-        let prettyTree = c.prettyTree;
-        c = new PrettyPrinterVisitor();
-        prettyTree.accept(c);
-        return c.result;
-    }
-    depthFirstForEach(f, mode){
-        let v = mode == "pre-order"?
-            new PreOrderVisitor(f):
-            mode == "post-order"?
-            new PostOrderVisitor(f): 
-            new InOrderVisitor(f);
-        this.accept(v);
-    }
-    size(){
-        let size = 0;
-        let v = new InOrderVisitor(function(x){
-            size++;
-        });
-        this.accept(v);
-        return size;
-    }
-    breadthFirstForEach(){
-        let c = new PrettyTreeCreatorVisitor();
-        this.accept(c);
-        let prettyTree = c.prettyTree;
-        c = new TreeGroupByVisitor('level');
-        prettyTree.accept(c);
-        let max = 0;
-        for(let each in c.groups){
-            let v = c.groups[each].length;
-            if(max < v) max = v;
-        }
-        return max;
-    }
-}
-class InsertVisitor extends Visitor{
-    visitTree(tree){
-        let newValue = this.f;
-        if(tree == null) return (this.newTree = new BinaryTree(newValue)) ;
-        if(tree.data > newValue)
-            tree.left = this.visitTree(tree.left);
-        else
-            tree.right = this.visitTree(tree.right);
-        return tree;
-    }
-}
-class ContainsVisitor extends Visitor{
-    visitTree(tree){
-        this.contains = this.includes(tree);
-    }
-    includes(tree){
-        if(tree==null) return false;
-        let query=this.f;
-        if(tree.data == query) return true;
-        return tree.data > query?
-            this.includes(tree.left): 
-            this.includes(tree.right);
-    }
-}
-class TreeGroupByVisitor extends Visitor{
-    constructor(f){
-        super(f);
-        this.groups = {};
-    }
-    visitTree(tree){
-        if(tree == null) return;
-        (this.groups[tree[this.f]] = (this.groups[tree[this.f]] || [])).push(tree);
-        this.visitTree(tree.left);
-        this.visitTree(tree.right);
-    }
-}
-
-class BinaryTree extends Tree{
-    constructor(data){
-        super(data);
-    }
-    insert(newData){
-        let i = new InsertVisitor(newData);
-        this.accept(i);
-        return i.newTree;
-    }
-    contains(n){
-        let i = new ContainsVisitor(n);
-        this.accept(i);
-        return i.contains;
-    }
-}
-
-/*MAIN*/
-
-let tree = null;
-for(let k = 0; k < 20; k ++){
-    let val = Math.floor(Math.random()*90+10);
-    if(tree == null) tree = new BinaryTree(val);
-    else tree.insert(val);
-}
-
-console.log(tree);
-console.log(tree.toString());
-console.log("Contains 77: "+tree.contains(77) );
-console.log("size: "+tree.size());
-let list = [];
-tree.depthFirstForEach(function(n){list.push(n)});
-console.log("Inorder: "+list);
-console.log("Breadth: "+tree.breadthFirstForEach());
-
-</script>
-</head>
-<body style="background-color: black;"></body>
+    console.log(tree);
+    console.log(tree.toString());
+    console.log("Contains 77: "+tree.contains(77) );
+    console.log("size: "+tree.size());
+    let list = [];
+    tree.depthFirstForEach(function(n){list.push(n)});
+    console.log("Inorder: "+list);
+    console.log("Breadth: "+tree.breadthFirstForEach());
+    
+    </script>
+</body>
 </html>
